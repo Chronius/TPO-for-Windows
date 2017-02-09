@@ -23,6 +23,7 @@ def cpu_info(timeout):
         print("time =",round((time.time() - start), 3), "s")
         time.sleep(5)
 
+#to replace the function of calculation of pi
 def foo(x):
     while True:
         print("Thread go", x)
