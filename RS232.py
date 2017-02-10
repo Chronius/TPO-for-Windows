@@ -1,6 +1,7 @@
 import serial
 import serial.tools.list_ports
 
+import time
 import threading, subprocess
 
 filename = 'resources\\text.bin' #use double reverse backslash for win_cmd
@@ -31,20 +32,20 @@ def testTxRx(Tx, Rx, baudrate):
     print("end test")
 
 #Thread 1
-def FromRS(event_for_wait, event_for_set):
+def FromRS():
     print("Start listen port")
     global state, Thread2
 
     with open(filename2, 'wb') as f2:   #Recieved file
         while Thread2 is True:
-            if Rx1.in_waiting():
-                byte = Rx1.read(Rx1.in_waiting())
+            if Rx1.inWaiting():
+                byte = Rx1.read(Rx1.inWaiting())
                 print("rx: ", byte)
                 f2.write(byte)    #read() - read one byte
     f2.close()
 
 #Thread 2
-def ToRS(event_for_wait, event_for_set):
+def ToRS():
     print("Start send data to port")
     global Thread2
 
@@ -54,6 +55,7 @@ def ToRS(event_for_wait, event_for_set):
             Tx1.write(line)
 
     f.close()
+    time.sleep(1)
     Thread2 = False
 
 def start_process(command, ignore = False):
@@ -77,9 +79,9 @@ for p in ports:
     portlist.append(p.device)
 
 print(portlist)
-
+print(portlist[1], portlist[2])
 testTxRx(portlist[1], portlist[2], BAUDRATE)
 print("switch Tx Rx")
 testTxRx(portlist[2], portlist[1], BAUDRATE)    #switch Tx<->Rx
 
-#print(start_process('FC /B ' + filename + ' ' + filename2)) #compare file1, file2
+print(start_process('FC /B ' + filename + ' ' + filename2)) #compare file1, file2
