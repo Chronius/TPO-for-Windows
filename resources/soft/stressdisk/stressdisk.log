@@ -1,0 +1,14 @@
+2017/02/13 16:01:03 statsfile "stressdisk_stats.json" does not exist -- will create
+2017/02/13 16:01:03 5 check files found - restarting
+2017/02/13 16:01:03 Starting round 1
+2017/02/13 16:01:03 Reading file "H:TST_0001", "H:TST_0004"
+2017/02/13 16:01:04 00000000: A4, A2 diff 06
+2017/02/13 16:01:04 00000001: 4E, 2E diff 60
+2017/02/13 16:01:09 Interrupt received
+2017/02/13 16:01:09 
+Bytes read:            78 MByte (  13.47 MByte/s)
+Bytes written:          0 MByte (   0.00 MByte/s)
+Errors:                 2
+Elapsed time:  5.8285828s
+
+2017/02/13 16:01:09 FAILED with 2 errors - see "stressdisk.log" for details
