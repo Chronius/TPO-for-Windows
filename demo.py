@@ -7,8 +7,20 @@ from asciimatics.exceptions import ResizeScreenError, NextScene, StopApplication
 
 import os, time, sys
 
-form_data = {}
 form_data2 = {}
+class ArrayScript(object):
+    def __init__(self):
+        self.files = os.listdir()
+        self.py_list = [x for x in self.files if x.endswith('.py')]
+        self.form_data = {}
+        for x in self.py_list:
+            self.form_data[x] = True
+
+    def get_form_data(self):
+        print(self.form_data)
+        return self.form_data
+    def update(self):
+
 
 class LogView(Frame):
     def __init__(self, screen):
@@ -17,8 +29,7 @@ class LogView(Frame):
                                        screen.height * 1,
                                        screen.width * 1,
                                        hover_focus=True,
-                                       title="TPO Log",
-                                      data=form_data2)
+                                       title="TPO Log")
 
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
@@ -43,8 +54,7 @@ class ListView(Frame):
                                        screen.height * 1,
                                        screen.width * 1,
                                        hover_focus=True,
-                                       title="Test TPO",
-                                      data=form_data)
+                                       title="Test TPO")
         self._tests_list = tests_list
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
@@ -53,7 +63,8 @@ class ListView(Frame):
 
         layout.add_widget(Label("Available tests"))
         layout.add_widget(Divider())
-        for x in tests_list:
+        self.data = self._tests_list.get_form_data()
+        for x in self.data:
             layout.add_widget(CheckBox(name=x, text=x, on_change=self._add))
         layout.add_widget(Divider())
 
@@ -68,16 +79,12 @@ class ListView(Frame):
         self.save()
         for key, value in self.data.items():
             value = False
-            if (key not in form_data) or (form_data[key] != value):
+            if (key not in self.data) or (self.data[key] != value):
                 changed = True
                 break
         self._start_button.disabled = not changed
 
     def _start(self):
-        global form_data2
-        for key, value in self.data.items():
-            form_data2[key] = value
-            print(key, value)
         self.save()
         raise NextScene("LogView")
 
@@ -88,20 +95,14 @@ class ListView(Frame):
 def demo(screen, scene):
 
     scenes = [
-        Scene([ListView(screen, py_list)], -1, name="Main"),
+        Scene([ListView(screen, scripts)], -1, name="Main"),
         Scene([LogView(screen)], -1, name="LogView")
     ]
 
     screen.play(scenes, stop_on_resize=True, start_scene=scene)
 
 
-files = os.listdir()
-py_list = [x for x in files if x.endswith('.py')]
-
-for x in py_list:
-    form_data[x] = True
-print(form_data)
-
+scripts = ArrayScript()
 last_scene = None
 while True:
     try:
