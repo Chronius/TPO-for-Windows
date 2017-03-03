@@ -1,29 +1,37 @@
 import subprocess
 
 dir_iperf = "resources\\soft\\iperf\\"
+#dir_iperf = "C:\develop\TPO_Debug\\resources\\soft\\iperf\\"
+
 cmd = "iperf3.exe -c 127.0.0.1 -t 1 -P4"
 
 def main():
     MAX_SPEED = 0.8
-    str = dir_iperf + cmd
+    str_cmd = dir_iperf + cmd
     res_list = []
 
-    with subprocess.Popen(str, stdout=subprocess.PIPE) as f:
+    try:
+        f = subprocess.Popen(str_cmd, stdout=subprocess.PIPE)
         for x in f.stdout.readlines():
-            #print(x)
+            print(x.decode("CP1251").strip())
             if b"SUM" in x[1:5]:
-                print(x.decode("CP866")[38:43] + "Gbits/sec")
+                #print(x.decode("CP866")[38:43] + "Gbits/sec")
                 res_list.append(float(x[38:43]))
-
+    except:
+        print("Run iperf and try again")
+    print()
     try:
         average = sum(res_list) / len(res_list)
-
+        for res in res_list:
+            print("sum speed =", res, "Gbits/sec")
         if average < MAX_SPEED:
             print("Failed test")
         else:
-            print("Test OK, average speed = ", average)
+            print("\nTest OK, average speed = ", average, "Gbits/sec")
     except ZeroDivisionError:
-        print("run iperf")
+        print("Test failed")
+        print("result list =", res_list)
+        print(len(res_list))
 
 
 if __name__ == '__main__':

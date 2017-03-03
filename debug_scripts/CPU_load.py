@@ -1,8 +1,10 @@
 import multiprocessing as mp
-import time
+import time, sys
 import wmi
 from decimal import *
 from math import factorial
+from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing import Pool
 
 
 def cpu_info(timeout):
@@ -25,9 +27,10 @@ def cpu_info(timeout):
         time.sleep(2)
 
 
+
 def chudnovsky(x):
     print("Thread go", x)
-    n = 100
+    n = 1000
     pi = Decimal(0)
     k = 0
     while k < n:
@@ -40,6 +43,7 @@ def chudnovsky(x):
 
 
 def main():
+
     print("Please enter test duration in 's'")
     TIMEOUT = int(input())
     if not TIMEOUT >= 5 or not TIMEOUT <= 120  :
@@ -47,8 +51,14 @@ def main():
         TIMEOUT = 5
     print("*********************Start CPU load test*********************")
     p = mp.Pool()
-    p.map_async(chudnovsky, range(4))
-    p2 = mp.Process(cpu_info(TIMEOUT))
+    p2 = mp.Process(target=cpu_info, args=(TIMEOUT,))
+
+    p2.start()
+    print("ok")
+    res = p.map_async(chudnovsky, range(3))
+    p2.join()
+    while p2.is_alive():
+        pass
 
 if __name__ == '__main__':
         main()

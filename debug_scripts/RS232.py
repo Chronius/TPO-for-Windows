@@ -12,8 +12,8 @@ state = threading.Event()
 def testTxRx(Tx, Rx, baudrate):
     global Tx1, Rx1, Thread2, state
 
-    Tx1 = serial.Serial(Tx, baudrate)
-    Rx1 = serial.Serial(Rx, baudrate)
+    Tx1 = serial.Serial(Tx, baudrate, timeout=1)
+    Rx1 = serial.Serial(Rx, baudrate, timeout=1)
 
     Thread2 = True
     state.clear()
@@ -59,13 +59,9 @@ def ToRS():
     Thread2 = False
 
 def start_process(command, ignore = False):
-    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if not ignore:
-            if (p.wait()):
-                    print(command," complited with an error!")
-                    exit(1)
-    res = [x.decode("CP866") for x in p.stdout.readlines()] #correct output on windwos
-    return  res
+    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)            
+    [print(x.decode("CP866").strip()) for x in p.stdout.readlines()]
+    return  p.wait()
 
 def main():
     print("/--------------------------------------------")
@@ -75,17 +71,23 @@ def main():
 
     ports = list(serial.tools.list_ports.comports())
     port_list = []
-
+    
     for p in ports:
         port_list.append(p.device)
 
     print(port_list)
-    print(port_list[1], port_list[2])
-    testTxRx(port_list[1], port_list[2], BAUDRATE)
-    print("switch Tx Rx")
-    testTxRx(port_list[2], port_list[1], BAUDRATE)  # switch Tx<->Rx
+    try:
+        print(port_list[0], port_list[1])
+        testTxRx(port_list[0], port_list[1], BAUDRATE)
+        print("switch Tx Rx")
+        testTxRx(port_list[1], port_list[0], BAUDRATE)  # switch Tx<->Rx
 
-    print(start_process('FC /B ' + filename + ' ' + filename2))  # compare file1, file2
+        if start_process('FC /B ' + filename + ' ' + filename2) == 1:  # compare file1, file2
+            print("Test FAILED")
+        else:
+            print("Test OK")
+    except:
+        print("\ncheck port list and try again")
 
 if __name__ == '__main__':
         main()

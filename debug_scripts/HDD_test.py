@@ -1,102 +1,73 @@
-import subprocess
-import string
-from ctypes import windll
-
-diskpart = 'DISKPART /s listdisk.txt'
-format_script = 'diskpart /s outputscript.txt'
-
-dir_stress_disk = "resources\soft\stressdisk\\"
-cmd = "stressdisk.exe -duration 1s run " #Длительность задается в формате XXhXXmXXsXXusXXns
-"""
-Full options:
-  -cpuprofile string
-        Write cpu profile to file
-  -duration duration
-        Duration to run test (default 24h0m0s)
-  -logfile string
-        File to write log to set to empty to ignore (default "stressdisk.log")
-  -maxerrors uint
-        Max number of errors to print per file (default 64)
-  -nodirect
-        Don't use O_DIRECT
-  -s int
-        Size of the check files (default 1000000000)
-  -stats duration
-        Interval to print stats (default 1m0s)
-  -statsfile string
-        File to load/store statistics data (default "stressdisk_stats.json")
-"""
-
-disks_to_check = []
-
-def get_drives():
-    drives = []
-    bitmask = windll.kernel32.GetLogicalDrives()
-    for letter in string.ascii_uppercase:
-        if bitmask & 1:
-            drives.append(letter)
-        bitmask >>= 1
-
-    return drives
+import time, sys
+from hw_info import hw_info
 
 
-def format_disk():
-    with subprocess.Popen(format_script, stdout=subprocess.PIPE) as f:
-        for x in f.stdout.readlines():
-            print(x.decode("CP866"))
+def copy_usb(src, dst, length = 16*1024):
+    with open(src, "rb") as fsrc:
+        with open(dst, "rb+") as fdst:
+            while 1:
+                buf = fsrc.read(length)
+                if not buf:
+                    break
+                fdst.write(buf)
 
 
-def stress_disk_go(disk_name):
-    err_count = 0
-    elapsed_t = None
-    str = dir_stress_disk + cmd + disk_name+":"
+def raw_write(disk):
+    print("\nopen disk:", disk[1], disk[0])
+    print("Start test write\n")
+    start = time.time()
+    for i in range(6): #16Mb * 6 = 96Mb
+        copy_usb("resources/data16M.bin", disk[0])
+    end = time.time()
+    end = round(end - start, 10)
+    size = (i+1)*16
+    speed = size / end
+    print(end, "s")
+    print("data size %i Mbyte" % size)
+    print("write:", speed, "Mbyte/sec\n")
 
-    with subprocess.Popen(str, stderr=subprocess.PIPE) as f:
-        while f.poll() is None:
-            x = f.stderr.readline()
-            if b"Bytes read" in x or b"Reading file" in x \
-                    or b"Writing file" in x or b"Bytes written" in x:
-                print(x.decode("CP866"))
-            if b"Errors" in x:
-                err_count = int(x[24:25])
-            if b"Elapsed" in x:
-                elapsed_t = x
 
-    if not err_count:
-        print("Test OK\n" + elapsed_t.decode("CP866"))
-    else:
-        print("Test failed\nErrors: ", err_count, "\nElapsed time: ", elapsed_t)
+def raw_read(disk):
+    with open(disk[0], "rb+") as _disk:
+        print("\nopen disk:", disk[1], disk[0])
+        print("Start test read\n")
+        _disk.read(1)
+        length = 1*1024
+        ret_size = 0
+        start = time.time()
+        for i in range(100000):
+            buf = _disk.read(length)
+            if not buf:
+                break
+            ret_size += sys.getsizeof(buf)
+            
+        end = time.time()
+        end = round(end - start, 10)
+        speed = ret_size / end
+        print(end, "s")
+        print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
+        print("read: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
 
+def read_sec(disk):
+    with open(disk[0], "rb") as _disk:
+        print("\nopen disk:", disk[0], disk[1])
+        print("Start test read\n")
+        _disk.read(1)
+        _disk.seek(1024)
+        for i in range(1):
+            print(_disk.read(10))
 
 def main():
-    with subprocess.Popen(diskpart, stdout=subprocess.PIPE) as f:
-        for x in f.stdout.readlines():
-            print(x.decode("CP866"))
+    h = hw_info()
+    a = h.disk_info() #a is [(name, model), ...] or a[i][j]
 
-    disk = input("Select testing disk:\t")
-    print(disk)
+    #raw_write(a[0])
+    #raw_read(a[0])
 
-    disk_name = input("Enter the name of the drive:\t")
-
-    output = open("outputscript.txt", "w")
-
-    with open("diskscript.txt", "r") as script:
-        for line in script.readlines():
-            if "select disk" in line:
-                line = "select disk " + disk + '\n'
-            if "assign letter=" in line:
-                line = "assign letter=" + disk_name + '\n'
-            output.writelines(line)
-    output.close()
-
-    #uncomment this line if you want to format the drive
-    #format_disk()
-
-    print(get_drives())
-    stress_disk_go(disk_name)
+    #uncomment for test all disk
+    #must be very accuracy!!!
+    #for disk in a:
+    #    raw_read(disk)
 
 if __name__ == '__main__':
     main()
-
-
-
