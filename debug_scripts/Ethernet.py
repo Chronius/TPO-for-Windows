@@ -11,7 +11,7 @@ def main():
     res_list = []
 
     try:
-        f = subprocess.Popen(str_cmd, stdout=subprocess.PIPE)
+        f = subprocess.Popen(str_cmd, stdout=subprocess.PIPE, bufsize=1)
         for x in f.stdout.readlines():
             print(x.decode("CP1251").strip())
             if b"SUM" in x[1:5]:

@@ -1,7 +1,7 @@
 import serial
 import serial.tools.list_ports
 
-import time
+import time, os
 import threading, subprocess
 
 filename = 'resources\\text.bin' #use double reverse backslash for win_cmd
@@ -73,19 +73,23 @@ def main():
     port_list = []
     
     for p in ports:
-        port_list.append(p.device)
+        if p and "КВ Последовательный порт" in p.description:
+            port_list.append(p.device)
 
     print(port_list)
+    testTxRx(port_list[1], port_list[2], BAUDRATE)
     try:
-        print(port_list[0], port_list[1])
-        testTxRx(port_list[0], port_list[1], BAUDRATE)
+        print(port_list[2], port_list[1])
+        #testTxRx(port_list[1], port_list[2], BAUDRATE)
         print("switch Tx Rx")
-        testTxRx(port_list[1], port_list[0], BAUDRATE)  # switch Tx<->Rx
+        #testTxRx(port_list[3], port_list[2], BAUDRATE)  # switch Tx<->Rx
 
         if start_process('FC /B ' + filename + ' ' + filename2) == 1:  # compare file1, file2
             print("Test FAILED")
         else:
             print("Test OK")
+    except serial.serialutil.SerialException:
+        print("Device is busy")
     except:
         print("\ncheck port list and try again")
 

@@ -1,46 +1,44 @@
-import time, sys
+import time, sys, os
 from hw_info import hw_info
 
 
 def copy_usb(src, dst, length = 16*1024):
     with open(src, "rb") as fsrc:
-        with open(dst, "rb+") as fdst:
+        with open(dst, "rb+", buffering=0) as fdst:
             while 1:
-                buf = fsrc.read(length)
+                buf = fsrc.read()
                 if not buf:
                     break
                 fdst.write(buf)
-
+            p = fdst.tell()
+    return p
 
 def raw_write(disk):
     print("\nopen disk:", disk[1], disk[0])
     print("Start test write\n")
+    ret_size = 0
     start = time.time()
-    for i in range(6): #16Mb * 6 = 96Mb
-        copy_usb("resources/data16M.bin", disk[0])
+    for i in range(7): #16Mb * N 
+        ret_size += copy_usb("resources/data16M.bin", disk[0])
     end = time.time()
     end = round(end - start, 10)
-    size = (i+1)*16
-    speed = size / end
+    speed = ret_size / end
     print(end, "s")
-    print("data size %i Mbyte" % size)
-    print("write:", speed, "Mbyte/sec\n")
-
+    print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
+    print("write: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
 
 def raw_read(disk):
-    with open(disk[0], "rb+") as _disk:
+    with open(disk[0], "rb+", buffering=16*1024) as _disk:
         print("\nopen disk:", disk[1], disk[0])
         print("Start test read\n")
-        _disk.read(1)
-        length = 1*1024
-        ret_size = 0
+        length = 16*1024
         start = time.time()
-        for i in range(100000):
+        for i in range(10000):
             buf = _disk.read(length)
             if not buf:
                 break
-            ret_size += sys.getsizeof(buf)
-            
+        ret_size = _disk.tell()
+        print("size = ", ret_size)
         end = time.time()
         end = round(end - start, 10)
         speed = ret_size / end
@@ -59,14 +57,16 @@ def read_sec(disk):
 
 def main():
     h = hw_info()
-    a = h.disk_info() #a is [(name, model), ...] or a[i][j]
-
+    a = h.hard_info() #a is [(name, model), ...] or a[i][j]
+    #os.system('cls')
+    #print(a)
     #raw_write(a[0])
     #raw_read(a[0])
 
     #uncomment for test all disk
     #must be very accuracy!!!
     #for disk in a:
+    #    raw_write(disk)
     #    raw_read(disk)
 
 if __name__ == '__main__':

@@ -1,7 +1,9 @@
-import wmi
+import wmi, subprocess
 
 Drive_Type = {"Unknown" : 0, "No Root Directory" : 1, "Local Disk" : 2,
              "Network Drive" : 3, "Compact Disc" : 4, "RAM Disk" : 5}
+
+dir_tool = "resources\\soft\\"
 
 
 class hw_info():
@@ -13,10 +15,12 @@ class hw_info():
         self.dict_info = dict((k, False) for k in self.list_info)
 
     #return list of tuples [(Type0, Name0), (Type1, Name1), ...]
-    def disk_info(self):
+    def hard_info(self):
         disk_list = []
         for disk in self.w.Win32_DiskDrive():
             if "SanDisk Ultra" in disk.Model or "Virtual Disk" in disk.Model:
+                continue
+            if "Removable" in disk.MediaType:
                 continue
             print("Name =", disk.Name)
             print("Model =", disk.Model)
@@ -28,6 +32,25 @@ class hw_info():
             print("InterfaceType =", disk.InterfaceType, "\n")
             disk_list.append((disk.Name, disk.Model))
         return disk_list
+
+    def flash_info(self):
+        disk_list = []
+        for disk in self.w.Win32_DiskDrive():
+            if "SanDisk Ultra" in disk.Model or "Virtual Disk" in disk.Model:
+                continue
+            if "Fixed hard" in disk.MediaType:
+                continue
+            print("Name =", disk.Name)
+            print("Model =", disk.Model)
+            print("MediaType =", disk.MediaType)
+            size = (int(disk.Size) / pow(1024, 3))
+            print("Size =", round(size, 2), "Gbyte")
+            print("Sector size =", disk.BytesPerSector)
+            print("Serial number =", disk.SerialNumber)
+            print("InterfaceType =", disk.InterfaceType, "\n")
+            disk_list.append((disk.Name, disk.Model))
+        return disk_list
+
 
     def com_info(self):
         for port in self.w.Win32_SerialPort():
@@ -61,13 +84,63 @@ class hw_info():
             print("")
 
     def voltage_info(self):
-        for v in self.w.Win32_VoltageProbe():
-            print(v)
+        volt_type = {1: "VCORE", 2: "1V8", 3: "2V5", 4: "3V3", 5: "VBAT", 6: "5V", 7: "5VSB", 8: "12V", 9: "AC"}
+        sens_count = 0
+        sens_name = ""
+        sens_type = None
+        sens_value = 0
+        with subprocess.Popen(dir_tool+"ktool32.exe volt GetVoltageSensorCount ",
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+            for line in process.stdout.readlines(): # b'\n'-separated lines
+                if b"count" in line:                    
+                    sens_count = int(line[22:26].decode('CP866'))
+            for i in range(sens_count):
+                with subprocess.Popen(dir_tool+"ktool32.exe volt GetVoltageSensorInfo " + str(i),
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+                    for line in process.stdout.readlines():
+                        if b"name" in line:                    
+                            print(line.decode("CP1251").strip())
+                with subprocess.Popen(dir_tool+"ktool32.exe volt GetVoltageSensorValue " + str(i),
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+                    for line in process.stdout.readlines():
+                        if b"value" in line:
+                            sens_value = float(line[14:21])
+                            sens_value /= 1000
+                            print("\nValue = ", sens_value , "V\n")
+
 
     def temp_info(self):
-        for temp in self.w.Win32_Processor():
-            print(temp.CurrentVoltage)
-            print("")
+        temp_type = {1: "CPU", 2: "BOX", 3: "ENV", 4: "BOARD", 5: "BACKPLANE", 6: "CHIPSET", 7:"VIDEO"}
+        sens_count = 0
+        sens_name = ""
+        sens_type = None
+        sens_value = 0
+        with subprocess.Popen(dir_tool+"ktool32.exe temp GetTempSensorCount ",
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+            for line in process.stdout.readlines(): # b'\n'-separated lines
+                if b"count" in line:                    
+                    sens_count = int(line[27:28].decode('CP866'))
+
+            for i in range(sens_count):
+                with subprocess.Popen(dir_tool+"ktool32.exe temp GetTempSensorInfo " + str(i),
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+                    for line in process.stdout.readlines(): 
+                        if b"name" in line:                    
+                            sens_name = line.decode('CP866').strip()
+                        if b"type" in line:
+                            sens_type = line[6:9]
+                            sens_type = int(sens_type)
+                            for j in temp_type:
+                                if j == sens_type:
+                                    print(sens_name +" on "+ temp_type[sens_type])
+
+                with subprocess.Popen(dir_tool+"ktool32.exe temp GetTempSensorValue " + str(i),
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+                    for line in process.stdout.readlines():
+                        if b"value" in line:
+                            sens_value = float(line[14:21])
+                            sens_value /= 1000
+                            print("\nTemperature = ", sens_value , "\n")
 
     def cpu_info(self):
         for cpu in self.w.Win32_Processor():
@@ -93,9 +166,6 @@ class hw_info():
             print("ScreenHeight =", d.ScreenHeight)
             print("ScreenWidth =", d.ScreenWidth)
             print("")
-
-    def foo(self):
-        print(self.dict_info)
 
     def _get_data(self):
         return self.dict_info

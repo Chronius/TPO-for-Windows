@@ -22,14 +22,14 @@ def cpu_info(timeout):
                 load.update({sensor.Name: sensor.Value})
 
         for key in temp.keys():
-            print(key, "Temperature: ", temp[key], "Load: ", round(load[key], 2))
-        print("time =",round((time.time() - start), 3), "s")
+            print(key, "Temperature: ", temp[key], "Load: ", round(load[key], 2), "%")
+        print("\ntime =",round((time.time() - start), 3), "s\n")
         time.sleep(2)
 
 
 
 def chudnovsky(x):
-    print("Thread go", x)
+    print("Thread go", x, "\n")
     n = 1000
     pi = Decimal(0)
     k = 0
@@ -45,11 +45,11 @@ def chudnovsky(x):
 def main():
 
     print("Please enter test duration in 's'")
-    TIMEOUT = int(input())
+    TIMEOUT = 10#int(input())
     if not TIMEOUT >= 5 or not TIMEOUT <= 120  :
         print("Test duration incorrect\nset default time")
-        TIMEOUT = 5
-    print("*********************Start CPU load test*********************")
+        TIMEOUT = 15
+    print("\tStart CPU load test".upper())
     p = mp.Pool()
     p2 = mp.Process(target=cpu_info, args=(TIMEOUT,))
 
@@ -62,4 +62,4 @@ def main():
 
 if __name__ == '__main__':
         main()
-        print("\t*********************End test*********************")
+        print("\tEnd test".upper())
