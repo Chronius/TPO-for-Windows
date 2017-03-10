@@ -1,7 +1,0 @@
-list disk 
-select disk 1
-clean
-create partition primary
-active
-format fs=NTFS QUICK
-assign letter=T
