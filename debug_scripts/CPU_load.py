@@ -3,8 +3,26 @@ import time, sys
 import wmi
 from decimal import *
 from math import factorial
-from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing import Pool
+
+
+def setpriority(pid=None, priority=1):
+    """ Set The Priority of a Windows Process.  Priority is a value between 0-5 where
+        2 is normal priority.  Default sets the priority of the current
+        python process but can take any valid process ID. """
+
+    import win32api, win32process, win32con
+
+    priorityclasses = [win32process.IDLE_PRIORITY_CLASS,
+                       win32process.BELOW_NORMAL_PRIORITY_CLASS,
+                       win32process.NORMAL_PRIORITY_CLASS,
+                       win32process.ABOVE_NORMAL_PRIORITY_CLASS,
+                       win32process.HIGH_PRIORITY_CLASS,
+                       win32process.REALTIME_PRIORITY_CLASS]
+    if pid == None:
+        pid = win32api.GetCurrentProcessId()
+    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+    win32process.SetPriorityClass(handle, priorityclasses[priority])
 
 
 def cpu_info(timeout):
@@ -23,14 +41,15 @@ def cpu_info(timeout):
 
         for key in temp.keys():
             print(key, "Temperature: ", temp[key], "Load: ", round(load[key], 2), "%")
-        print("\ntime =",round((time.time() - start), 3), "s\n")
+        print("\ntime =", round((time.time() - start), 3), "s\n")
+        sys.stdout.flush()
         time.sleep(2)
-
 
 
 def chudnovsky(x):
     print("Thread go", x, "\n")
-    n = 1000
+    setpriority(priority=0)
+    n = 5000
     pi = Decimal(0)
     k = 0
     while k < n:
@@ -39,27 +58,23 @@ def chudnovsky(x):
     pi = pi * Decimal(10005).sqrt()/4270934400
     pi = pi**(-1)
     print(pi)
+    sys.stdout.flush()
     return pi
 
 
 def main():
 
-    print("Please enter test duration in 's'")
-    TIMEOUT = 10#int(input())
-    if not TIMEOUT >= 5 or not TIMEOUT <= 120  :
-        print("Test duration incorrect\nset default time")
-        TIMEOUT = 15
-    print("\tStart CPU load test".upper())
+    timeout = 120
     p = mp.Pool()
-    p2 = mp.Process(target=cpu_info, args=(TIMEOUT,))
+    p2 = mp.Process(target=cpu_info, args=(timeout,))
 
     p2.start()
-    print("ok")
-    res = p.map_async(chudnovsky, range(3))
+    res = p.map_async(chudnovsky, range(mp.cpu_count()))
     p2.join()
     while p2.is_alive():
         pass
 
 if __name__ == '__main__':
         main()
-        print("\tEnd test".upper())
+        print("\tEnd test\n".upper())
+        sys.stdout.flush()

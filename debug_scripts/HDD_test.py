@@ -1,4 +1,6 @@
 import time, sys, os
+
+sys.path.append(".\\")
 from hw_info import hw_info
 
 
@@ -13,6 +15,7 @@ def copy_usb(src, dst, length = 16*1024):
             p = fdst.tell()
     return p
 
+
 def raw_write(disk):
     print("\nopen disk:", disk[1], disk[0])
     print("Start test write\n")
@@ -26,6 +29,8 @@ def raw_write(disk):
     print(end, "s")
     print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
     print("write: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
+    sys.stdout.flush()
+
 
 def raw_read(disk):
     with open(disk[0], "rb+", buffering=16*1024) as _disk:
@@ -45,6 +50,8 @@ def raw_read(disk):
         print(end, "s")
         print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
         print("read: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
+        sys.stdout.flush()
+
 
 def read_sec(disk):
     with open(disk[0], "rb") as _disk:
@@ -55,13 +62,12 @@ def read_sec(disk):
         for i in range(1):
             print(_disk.read(10))
 
+
 def main():
     h = hw_info()
     a = h.hard_info() #a is [(name, model), ...] or a[i][j]
-    #os.system('cls')
-    #print(a)
-    #raw_write(a[0])
-    #raw_read(a[0])
+    os.system('cls')
+    print(a)
 
     #uncomment for test all disk
     #must be very accuracy!!!
@@ -71,3 +77,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    exit(0)

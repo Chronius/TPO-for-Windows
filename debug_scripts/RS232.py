@@ -1,13 +1,14 @@
 import serial
 import serial.tools.list_ports
 
-import time, os
+import time, sys
 import threading, subprocess
 
 filename = 'resources\\text.bin' #use double reverse backslash for win_cmd
 filename2 = 'resources\\text_copy.bin'
 
 state = threading.Event()
+
 
 def testTxRx(Tx, Rx, baudrate):
     global Tx1, Rx1, Thread2, state
@@ -31,8 +32,9 @@ def testTxRx(Tx, Rx, baudrate):
     Rx1.close()
     print("end test")
 
-#Thread 1
+
 def FromRS():
+    """Thread 1"""
     print("Start listen port")
     global state, Thread2
 
@@ -41,11 +43,13 @@ def FromRS():
             if Rx1.inWaiting():
                 byte = Rx1.read(Rx1.inWaiting())
                 print("rx: ", byte)
+                sys.stdout.flush()
                 f2.write(byte)    #read() - read one byte
     f2.close()
 
-#Thread 2
+
 def ToRS():
+    """Thread 2"""
     print("Start send data to port")
     global Thread2
 
@@ -58,13 +62,15 @@ def ToRS():
     time.sleep(1)
     Thread2 = False
 
+
 def start_process(command, ignore = False):
-    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)            
+    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     [print(x.decode("CP866").strip()) for x in p.stdout.readlines()]
-    return  p.wait()
+    return p.wait()
+
 
 def main():
-    print("/--------------------------------------------")
+
     print("Run test RS232")
 
     BAUDRATE = 115200
@@ -76,22 +82,28 @@ def main():
         if p and "КВ Последовательный порт" in p.description:
             port_list.append(p.device)
 
-    print(port_list)
-    testTxRx(port_list[1], port_list[2], BAUDRATE)
+
+    #testTxRx(port_list[1], port_list[2], BAUDRATE)
     try:
+        print(port_list)
         print(port_list[2], port_list[1])
+        sys.stdout.flush()
         #testTxRx(port_list[1], port_list[2], BAUDRATE)
         print("switch Tx Rx")
         #testTxRx(port_list[3], port_list[2], BAUDRATE)  # switch Tx<->Rx
 
         if start_process('FC /B ' + filename + ' ' + filename2) == 1:  # compare file1, file2
-            print("Test FAILED")
+            exit(1)
         else:
-            print("Test OK")
+            exit(0)
     except serial.serialutil.SerialException:
         print("Device is busy")
+        sys.stdout.flush()
+        exit(1)
     except:
         print("\ncheck port list and try again")
+        sys.stdout.flush()
+        exit(1)
 
 if __name__ == '__main__':
         main()
