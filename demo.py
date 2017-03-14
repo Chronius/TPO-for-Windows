@@ -1,20 +1,34 @@
 from asciimatics.widgets import Frame, Layout, Divider, \
-    Button, CheckBox, Label, ListBox, Widget
+    Button, CheckBox, Label, ListBox
 from asciimatics.scene import Scene
 from asciimatics.screen import Screen
 from asciimatics.exceptions import ResizeScreenError, NextScene, StopApplication
 from hw_info import hw_info
+
 
 #own class base on TextBox class from asciimatics for output
 from TextBoxClass import OutView
 
 import subprocess
 
-import os, sys, logging, time
-logging.basicConfig(format=u'[%(asctime)s]  %(message)s', level=logging.DEBUG, filename=u'mylog.log')
+from colorama import init, Fore, Style
+import os, sys, logging
+from datetime import datetime as dt
+
+#Create new log file every time run the programm
+date = dt.today()
+date = str(date).replace(':', '')[:17]
+log_file = '.\\logs\\' + date + '.txt'
+with open(log_file, 'tw', encoding='utf-8') as f:
+    pass
+
+logging.basicConfig(format=u'[%(asctime)s] %(levelname)-8s  %(message)s', level=logging.INFO, filename=log_file)
 
 
 class ArrayScript(object):
+    """
+    date information about used scripts and simple methods for use it
+    """
     def __init__(self):
         self.files = os.listdir("debug_scripts\\")
         self.py_list = [x for x in self.files if x.endswith('.py')]
@@ -23,13 +37,38 @@ class ArrayScript(object):
             self.form_data[x] = False
 
     def get_form_data(self):
+        """ :return dict: return dict like a {name: True, name2: False, ...}"""
         return self.form_data
 
     def update(self, details):
+        """ :param dict details: data to save"""
         self.form_data = details.copy()
 
 
+class ResultList(object):
+    def __init__(self):
+
+        self.res_list = {}
+
+    def get_data(self):
+        """ :return dict: return dict like a {"name": "OK", "name2": "FAILED", ...}"""
+        return self.res_list
+
+    def append(self, key, val):
+        """
+        :param string key: name of functional scripts
+        :param string val: string value "OK" or "FAILED" with result
+        """
+        self.res_list[key] = val
+
+
 class MainView(Frame):
+    """
+    Create main dialog window with a choice from:
+    "Hardware information" : hw tests for getting information about board
+    "Functional tests" : test for checking subsystems(like a ethernet, rs232, and etc.)
+    "Logging" : Output result functional tests, clear with each entrance
+    """
     def __init__(self, screen):
         super(MainView, self).__init__(screen,
                                        screen.height * 1,
@@ -69,13 +108,13 @@ class MainView(Frame):
         elif  self._list_view.options[self._list_view.value][0] == "Logging":
             raise NextScene("Output")
 
-
     @staticmethod
     def _quit():
         sys.exit(0)
 
 
 class LogView(Frame):
+    """Logging"""
     def __init__(self, screen):
         super(LogView, self).__init__(screen,
                                        screen.height * 1,
@@ -84,7 +123,6 @@ class LogView(Frame):
                                        title="TPO Log")
 
         self._screen = screen
-        #self._screen.print_at("Hello world", 3, 3)
         self.f = open("test.log", "rb")
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
@@ -120,6 +158,7 @@ class LogView(Frame):
 
 
 class HwView(Frame):
+    """Hardware information"""
     def __init__(self, screen, hw_list):
         super(HwView, self).__init__(screen,
                                      screen.height * 1,
@@ -167,6 +206,7 @@ class HwView(Frame):
 
 
 class ListView(Frame):
+    """Functional tests"""
     def __init__(self, screen, tests_list):
         super(ListView, self).__init__(screen,
                                        screen.height * 1,
@@ -222,24 +262,24 @@ class ListView(Frame):
 
 def call_script(name):
     with subprocess.Popen("python debug_scripts\\" + name + " > main.log",
-                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE) as process:
-        print("\nSTART: " + name)
-
-        #output.WriteConsole(process.stdout.read().decode("CP1251"))
-        log_subprocess_output(process.stdout)
-        return process.stdout
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
+            print("\nSTART: " + name)
+            logging.info("\n")
+            logging.info("START: " + name + "\n")
+            log_subprocess_output(process.stdout)
+    return process.wait()
 
 
 def log_subprocess_output(pipe):
-    for line in iter(pipe.read, b''): # b'\n'-separated lines
-        logging.info(line.decode('CP866'))
-        print(line.decode('CP866'))
+    for line in pipe: # b'\n'-separated lines
+        logging.info(line.decode('CP866').strip())
+        print(line.decode('CP866').strip())
 
 
-def demo(screen, scene, scripts, hw_list):
+def demo(screen, scene, scripts, hw_list, result):
     scenes = [
         Scene([MainView(screen)], -1, name="Main"),
-        Scene([OutView(screen, hw_list)], -1, name="Output"),
+        Scene([OutView(screen, result)], -1, name="Output"),
         Scene([HwView(screen, hw_list)], -1, name = "HwView"),
         Scene([ListView(screen, scripts)], -1, name="ListView"),
         Scene([LogView(screen)], -1, name="LogView"),
@@ -250,44 +290,69 @@ def demo(screen, scene, scripts, hw_list):
 
 def main():
     scripts = ArrayScript()
+    result = ResultList()
     hw = hw_info()
-
     last_scene = None
-
     while True:
         try:
+            error_count = 0
+
             logging.debug(u'START SCENE')
-            Screen.wrapper(demo, catch_interrupt=False, arguments=[last_scene, scripts, hw])
-            #Screen.close()
+            Screen.wrapper(demo, catch_interrupt=False, arguments=[last_scene, scripts, hw, result])
 
             os.system("cls")
             #update functional test list after call ListView and go test
             for key in scripts.get_form_data():
                 if scripts.get_form_data()[key]:
                     try:
-                        logging.debug(u'Call script: ' + key)
-                        call_script(key)
+                        os.system("cls")
                         scripts.get_form_data()[key] = False
-                        print("End Test\n")
+
+                        if "HDD" in key:
+                            init()
+                            print(Fore.RED + "\nAll data will be erased\nContinue? Y/N\n".upper())
+                            a = input()
+                            print(Style.RESET_ALL)
+                            if 'Y' not in a:
+                                error_count += 1
+                                result.append(key, "FAILED")
+                                break
+
+                        res = call_script(key)
+                        if res == 1:
+                            error_count += 1
+                            print("Test FAILED")
+                            result.append(key, "FAILED")
+                        if res == 0:
+                            print("Test OK")
+                            result.append(key, "OK")
                     except:
-                        print("Test", key, "Failed")
+                        os.system("cls")
+                        print("Test", key, "FAILED")
+                        result.append(key, "FAILED")
+
+                        error_count += 1
+                    finally:
+                        print("ERR = ", error_count)
+                        print("Press Enter key")
+                        input()
 
             #update hw_list after call HwView and go test
-            count = 0
             for i in hw._get_data():
                 if hw._get_data()[i]:
                     try:
+                        os.system("cls")
                         print(i.upper())
                         eval('hw.' + i + '()')
                         print("\n")
                         hw._get_data()[i] = False
                         print()
                     except:
-                        print(i.upper() + "FAILED")
-                else:
-                    count += 1
-            print("Press Enter key")
-            print("next", input())
+                        os.system("cls")
+                        print(i.upper() + " FAILED")
+                    finally:
+                        print("Press Enter key")
+                        input()
 
         except ResizeScreenError as e:
             last_scene = e.scene
