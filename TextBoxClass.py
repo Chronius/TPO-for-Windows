@@ -1,12 +1,9 @@
-from asciimatics.widgets import Frame, TextBox, Layout, Divider, Text, \
+from asciimatics.widgets import Frame, TextBox, Layout, \
     Button
-from asciimatics.scene import Scene
 from asciimatics.screen import Screen
-from asciimatics.exceptions import ResizeScreenError, NextScene
+from asciimatics.exceptions import NextScene
 from asciimatics.event import KeyboardEvent, MouseEvent
 from copy import copy
-
-import sys
 
 
 class TextPrint(TextBox):
@@ -29,7 +26,7 @@ class TextPrint(TextBox):
         self._required_height = height
         self._as_string = as_string
         self._on_change = on_change
-        self._log_file = open("test.log", "r")
+        #self._log_file = open("test.log", "r")
 
     def update(self, frame_no):
         self._draw_label()
@@ -127,16 +124,16 @@ class TextPrint(TextBox):
             return event
 
 
-class OutView(Frame):
-    def __init__(self, screen, hw_list):
-        super(OutView, self).__init__(screen,
+class SumView(Frame):
+    def __init__(self, screen, res_list):
+        super(SumView, self).__init__(screen,
                                      screen.height,
                                      screen.width ,
                                      hover_focus=False,
                                      has_border=True,
                                      title="Hardware information")
 
-        self._hw_list = hw_list
+        self._res_list = res_list
         layout = Layout([1], fill_frame=True)
         layout2 = Layout([1, 1, 1], fill_frame=False)
         self.add_layout(layout)
@@ -149,16 +146,6 @@ class OutView(Frame):
 
     def _ok(self):
         raise NextScene("Main")
-        #count = 0
-        #for i in self._hw_list:
-        #    if self._hw_list[i]:
-        #        self._hw_list[i] = False
-        #        break
-        #else:
-        #    count += 1
-        #
-        #if count == len(self._hw_list):
-        #    raise NextScene("MainView")
 
     def _update(self, frame_no):
         # Reset the canvas to prepare for next round of updates.
@@ -226,11 +213,17 @@ class OutView(Frame):
                                           self._canvas.width - 1, y,
                                           colour, attr, bg)
 
-        #Output
-            o = self._screen._stdout
-            #o.SetConsoleCursorPosition(PyCOORD(0, 0))
-            #o.WriteConsole("test\ntest1\ntest2")
-            self._canvas.print_at("test3\ttest4\ntest5", 10, 10, colour, attr, bg)
+            #clear
+            #for i in range(2, self._canvas.height - 6):
+            #    self._canvas.print_at(
+            #        " " * (self._canvas.width - 2), 1, i, 7, bg, bg)
+
+            #self._canvas.print_at("test", self._canvas.width // 2 - 2, 20, 7, attr, bg)
+            i = 0
+            for x in self._res_list.get_data():
+                i += 2
+                self._canvas.print_at(x + " " + self._res_list.get_data()[x], self._canvas.width // 2 - 5, i + 5, 7, attr, bg)
+            self._res_list.get_data().clear()
 
         # Now push it all to screen.
         self._canvas.refresh()

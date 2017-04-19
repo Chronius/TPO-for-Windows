@@ -7,7 +7,7 @@ from hw_info import hw_info
 
 
 #own class base on TextBox class from asciimatics for output
-from TextBoxClass import OutView
+from TextBoxClass import SumView
 
 import subprocess
 
@@ -17,13 +17,13 @@ from datetime import datetime as dt
 
 #Create new log file every time run the programm
 date = dt.today()
-date = str(date).replace(':', '')[:17]
-log_file = '.\\logs\\' + date + '.txt'
+str_date = str(date).replace(':', '')[:17]
+log_file = '.\\logs\\' + str_date + '.txt'
 with open(log_file, 'tw', encoding='utf-8') as f:
     pass
 
-logging.basicConfig(format=u'[%(asctime)s] %(levelname)-8s  %(message)s', level=logging.INFO, filename=log_file)
-
+logging.basicConfig(format=u'[%(asctime)s] \t  %(message)s', level=logging.INFO, filename=log_file)
+myhandler = logging.FileHandler(log_file)
 
 class ArrayScript(object):
     """
@@ -67,9 +67,9 @@ class MainView(Frame):
     Create main dialog window with a choice from:
     "Hardware information" : hw tests for getting information about board
     "Functional tests" : test for checking subsystems(like a ethernet, rs232, and etc.)
-    "Logging" : Output result functional tests, clear with each entrance
+    "Summary" : Output result functional tests, clear with each entrance
     """
-    def __init__(self, screen):
+    def __init__(self, screen, handler, result):
         super(MainView, self).__init__(screen,
                                        screen.height * 1,
                                        screen.width * 1,
@@ -78,10 +78,12 @@ class MainView(Frame):
 
         layout2 = Layout([1, 1, 1], fill_frame=False)
 
+        self.handler = handler
+        self.result = result
         self.add_layout(layout2)
         layout2.add_widget(Label("Select an option"), 1)
 
-        self.init_values = [("Hardware information", 0), ("Functional tests", 1), ("Logging", 2)]
+        self.init_values = [("Hardware information", 0), ("Functional tests", 1), ("Summary", 2)]
 
         self._list_view = ListBox(4, self.init_values, on_change=self._on_pick)
         layout2.add_widget(self._list_view, 1)
@@ -105,11 +107,23 @@ class MainView(Frame):
             raise NextScene("HwView")
         elif self._list_view.options[self._list_view.value][0] == "Functional tests":
             raise NextScene("ListView")
-        elif  self._list_view.options[self._list_view.value][0] == "Logging":
+        elif  self._list_view.options[self._list_view.value][0] == "Summary":
             raise NextScene("Output")
 
-    @staticmethod
-    def _quit():
+    def _quit(self):
+        self.handler.close()
+        global log_file
+        f = open(log_file, "r+")
+        lines = f.readlines()
+        f.seek(0)
+        f.writelines("================================================\n")
+        f.writelines("Summary Result\n")
+        f.writelines("================================================\n")
+        for x in self.result.get_data():
+            logging.info(x)
+            f.writelines(str(x +" "+self.result.get_data()[x]+" \n"))
+        f.writelines("================================================\n")
+        f.writelines(lines)
         sys.exit(0)
 
 
@@ -123,7 +137,6 @@ class LogView(Frame):
                                        title="TPO Log")
 
         self._screen = screen
-        self.f = open("test.log", "rb")
         layout = Layout([1], fill_frame=True)
         self.add_layout(layout)
         layout.add_widget(Label("It`s LOG"))
@@ -262,24 +275,43 @@ class ListView(Frame):
 
 def call_script(name):
     with subprocess.Popen("python debug_scripts\\" + name + " > main.log",
-                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1) as process:
-            print("\nSTART: " + name)
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as process:
+            print("================================================")
+            print("START: " + name)
+            print("================================================")
             logging.info("\n")
-            logging.info("START: " + name + "\n")
-            log_subprocess_output(process.stdout)
+            logging.info("================================================")
+            logging.info("START: " + name)
+            logging.info("================================================")
+            if "RS" in name:
+                for line in process.stdout:
+                    if "Progress" not in line and ('M' in line or 'o' in line):
+                        print(line)
+                        logging.info(line)
+                    if "Progress" in line:
+                        progress = line
+                        sys.stdout.write('\r'+line.strip())
+                    if "err" in line:
+                        sys.stdout.write('\n'+line)
+                logging.info(progress)
+                logging.info(line.strip())
+            else:
+                log_subprocess_output(process.stdout)
     return process.wait()
 
 
 def log_subprocess_output(pipe):
     for line in pipe: # b'\n'-separated lines
-        logging.info(line.decode('CP866').strip())
-        print(line.decode('CP866').strip())
+        out = line.strip()
+        print(out)
+        logging.info(out)
 
 
 def demo(screen, scene, scripts, hw_list, result):
+    global myhandler
     scenes = [
-        Scene([MainView(screen)], -1, name="Main"),
-        Scene([OutView(screen, result)], -1, name="Output"),
+        Scene([MainView(screen, myhandler, result)], -1, name="Main"),
+        Scene([SumView(screen, result)], -1, name="Output"),
         Scene([HwView(screen, hw_list)], -1, name = "HwView"),
         Scene([ListView(screen, scripts)], -1, name="ListView"),
         Scene([LogView(screen)], -1, name="LogView"),
@@ -293,6 +325,8 @@ def main():
     result = ResultList()
     hw = hw_info()
     last_scene = None
+    logging.info("Test started at:\t" + str(date))
+    logging.info("================================================\n")
     while True:
         try:
             error_count = 0
@@ -316,15 +350,18 @@ def main():
                             if 'Y' not in a:
                                 error_count += 1
                                 result.append(key, "FAILED")
+                                logging.info("TEST FAILED: User User disagreed erased SSD")
                                 break
 
                         res = call_script(key)
                         if res == 1:
                             error_count += 1
                             print("Test FAILED")
+                            logging.info("TEST FAILED")
                             result.append(key, "FAILED")
                         if res == 0:
                             print("Test OK")
+                            logging.info("TEST OK")
                             result.append(key, "OK")
                     except:
                         os.system("cls")
@@ -332,16 +369,17 @@ def main():
                         result.append(key, "FAILED")
 
                         error_count += 1
-                    finally:
-                        print("ERR = ", error_count)
-                        print("Press Enter key")
-                        input()
+                    # finally:
+                    #     print("ERR = ", error_count)
+                    #     print("Press Enter key")
+                    #     input()
 
             #update hw_list after call HwView and go test
             for i in hw._get_data():
                 if hw._get_data()[i]:
                     try:
                         os.system("cls")
+                        print("=======================================")
                         print(i.upper())
                         eval('hw.' + i + '()')
                         print("\n")

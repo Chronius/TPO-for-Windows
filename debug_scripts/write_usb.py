@@ -16,8 +16,10 @@ def copy_usb(src, dst):
 
 
 def raw_write(disk):
-    print("\nopen disk:", disk[1], disk[0])
-    print("Start test write\n")
+    print("---------------------------------------------")
+    print("open disk:", disk[1], "\npath",disk[0])
+    print("Start test write")
+    print("---------------------------------------------")
     ret_size = 0
     start = time.time()
     for i in range(4): #16Mb * N
@@ -27,15 +29,24 @@ def raw_write(disk):
     speed = ret_size / end
     print(end, "s")
     print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
-    print("write: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
+    speed = round((speed / 1024) / 1024, 3)
+    print("write: ", speed, "Mbyte/sec")
+    print("---------------------------------------------")
+    if speed > 7:
+        return 0
+    return 1
+    print("failed test with low speed, expected 7 Mb/s, result", speed)
+    print("---------------------------------------------")
     sys.stdout.flush()
 
 
 def raw_read(disk):
     try:
         with open(disk[0], "rb+", buffering=16 * 1024) as _disk:
+            print("---------------------------------------------")
             print("\nopen disk:", disk[1], "\npath:", disk[0])
-            print("Start test read\n")
+            print("Start test read")
+            print("---------------------------------------------")
             length = 16 * 1024
             start = time.time()
             for i in range(5000):
@@ -46,12 +57,20 @@ def raw_read(disk):
             end = time.time()
             end = round(end - start, 10)
             speed = ret_size / end
+            speed = round((speed / 1024) / 1024, 3)
             print(end, "s")
             print("data size %i Mbyte" % ((ret_size / 1024) / 1024))
-            print("read: ", round((speed / 1024) / 1024, 3), "Mbyte/sec\n")
-            print("Test OK")
+            print("read: ", speed, "Mbyte/sec")
+            print("---------------------------------------------")
+            if speed > 7:
+                return 0
+            return 1
+            print("failed test with low speed, expected 7 Mb/s, result", speed)
+            print("---------------------------------------------")
+            sys.stdout.flush()
     except:
-        print("Test FAILED")
+        print("failed open disk")
+        return 1
     finally:
         sys.stdout.flush()
 
@@ -68,15 +87,16 @@ def read_sec(disk):
 def main():
     h = hw_info()
     a = h.flash_info()
-    #os.system('cls')
+    os.system('cls')
     # uncomment for test all disk
     # must be very accuracy!!!
-    """
+    err_count = 0
     for disk in a:
         #read_sec(disk)
-        raw_write(disk)
-        raw_read(disk)
-    """
+        err_count += raw_write(disk)
+        err_count += raw_read(disk)
+    if err_count:
+        exit(1)
 if __name__ == '__main__':
     main()
     exit(0)

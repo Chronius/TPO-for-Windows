@@ -5,7 +5,7 @@ from decimal import *
 from math import factorial
 from multiprocessing import Pool
 
-
+TEMP_MAX = 80
 def setpriority(pid=None, priority=1):
     """ Set The Priority of a Windows Process.  Priority is a value between 0-5 where
         2 is normal priority.  Default sets the priority of the current
@@ -41,7 +41,12 @@ def cpu_info(timeout):
 
         for key in temp.keys():
             print(key, "Temperature: ", temp[key], "Load: ", round(load[key], 2), "%")
-        print("\ntime =", round((time.time() - start), 3), "s\n")
+            if temp[key] >= TEMP_MAX:
+                print("!!! High temperature on", key, "!!!")
+                exit(1)
+        print("----------------------")
+        print("time passed =", round((time.time() - start), 3), "s")
+        print("---------------------------------------")
         sys.stdout.flush()
         time.sleep(2)
 
@@ -64,7 +69,7 @@ def chudnovsky(x):
 
 def main():
 
-    timeout = 120
+    timeout = 60
     p = mp.Pool()
     p2 = mp.Process(target=cpu_info, args=(timeout,))
 
@@ -73,8 +78,11 @@ def main():
     p2.join()
     while p2.is_alive():
         pass
+    if p2.exitcode == 1:        
+        print("")
+        exit(1)
 
 if __name__ == '__main__':
         main()
-        print("\tEnd test\n".upper())
+        print("\tSuccess end test\n".upper())
         sys.stdout.flush()
